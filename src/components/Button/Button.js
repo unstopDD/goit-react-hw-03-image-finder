@@ -4,7 +4,7 @@ import s from "./Button.module.css";
 
 function Button({ nextImages }) {
   return (
-    <button type="articles" className={s.Button} onClick={nextImages}>
+    <button type="button" className={s.Button} onClick={nextImages}>
       Load More
     </button>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import ImageGalleryItem from "../ImageGalleryItem";
+import ImageGalleryItem from "./ImageGalleryItem";
 
 import s from "./ImageGallery.module.css";
 
@@ -26,7 +26,7 @@ ImageGallery.propTypes = {
       webformatURL: PropTypes.string.isRequired,
       largeImageURL: PropTypes.string.isRequired,
     }).isRequired
-  ),
+  ).isRequired,
 };
 
 export default ImageGallery;
