@@ -47,15 +47,10 @@ export class ImageInfo extends Component {
       imageAPI
         .fetchArticlesWithQuery(nextName, nextPage)
         .then(({ hits, totalHits }) => {
-          if (totalHits - nextPage * 12 <= 0) {
-            return this.setState(() => ({
-              arePicturesOver: true,
-              status: Status.RESOLVED,
-            }));
-          }
           this.setState((prevState) => ({
             articles: [...prevState.articles, ...hits],
             status: Status.RESOLVED,
+            arePicturesOver: totalHits - (nextPage - 1) * 12 <= 0,
           }));
         })
         .catch((error) => this.setState({ error, status: Status.REJECTED }));
