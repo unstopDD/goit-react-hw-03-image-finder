@@ -1,10 +1,10 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ImageGallery from "../ImageGallery";
 import Button from "../Button";
 import Spinner from "../Loader";
 import Modal from "../Modal";
-import Searchbar from "../Searchbar";
 
 import imageAPI from "../../utils/articlesApi";
 import scroll from "../../utils/scroll";
@@ -17,59 +17,66 @@ const Status = {
 };
 
 export class ImageInfo extends Component {
+  static propTypes = {
+    serchQuery: PropTypes.string.isRequired,
+  };
+
   state = {
     articles: [],
     page: 1,
     error: null,
     showModal: false,
     largeImgUrl: null,
-    arePicturesOver: true,
+    arePicturesOver: false,
     status: Status.IDLE,
   };
 
   componentDidUpdate(prevProps, prevState) {
-    const prevQuery = prevState.serchQuery;
-    const nextName = this.state.serchQuery;
+    const prevQuery = prevProps.serchQuery;
+    const nextName = this.props.serchQuery;
+    const prevPage = prevState.page;
+    const nextPage = this.state.page;
 
     if (prevQuery !== nextName) {
-      this.fetchArticles();
+      this.setState({ articles: [], page: 1, error: null });
     }
 
-    if (prevState.page !== this.state.page) {
-      setTimeout(scroll, 400);
+    if (prevQuery !== nextName || prevPage !== nextPage) {
+      this.setState({ status: Status.PENDING });
+
+      imageAPI
+        .fetchArticlesWithQuery(nextName, nextPage)
+        .then(({ hits, totalHits }) => {
+          if (totalHits - nextPage * 12 <= 0) {
+            return this.setState(() => ({
+              arePicturesOver: true,
+              status: Status.RESOLVED,
+            }));
+          }
+          this.setState((prevState) => ({
+            articles: [...prevState.articles, ...hits],
+            status: Status.RESOLVED,
+          }));
+        })
+        .catch((error) => this.setState({ error, status: Status.REJECTED }));
     }
   }
 
-  fetchArticles = () => {
-    const nextName = this.state.serchQuery;
-    const { page } = this.state;
-    this.setState({ status: Status.PENDING });
-
-    imageAPI
-      .fetchArticlesWithQuery(nextName, page)
-      .then(({ hits, totalHits }) =>
-        this.setState((prevState) => ({
-          articles: [...prevState.articles, ...hits],
-          page: prevState.page + 1,
-          status: Status.RESOLVED,
-          arePicturesOver: totalHits / page < hits.length,
-        }))
-      )
-      .catch((error) => this.setState({ error, status: Status.REJECTED }));
-  };
-
-  handleSearchbarSubmit = (query) => {
-    this.setState({ serchQuery: query, page: 1, articles: [] });
+  onClickLoadMore = () => {
+    this.setState((prevState) => ({
+      page: prevState.page + 1,
+    }));
+    setTimeout(scroll, 400);
   };
 
   closeModal = () => {
-    this.setState({ showModal: !this.state.showModal, largeImgUrl: null });
+    this.setState({ showModal: false, largeImgUrl: null });
   };
 
   handleClickImg = (largeImgUrl) => {
     this.setState({
       largeImgUrl: largeImgUrl,
-      showModal: !this.state.showModal,
+      showModal: true,
     });
   };
 
@@ -84,26 +91,21 @@ export class ImageInfo extends Component {
     } = this.state;
 
     if (status === Status.IDLE) {
-      return <Searchbar onSubmit={this.handleSearchbarSubmit} />;
+      return <></>;
     }
-    if (status === Status.PENDING) {
-      return (
-        <>
-          <Searchbar onSubmit={this.handleSearchbarSubmit} />;
-          <ImageGallery images={articles} openModal={this.handleClickImg} />;
-          <Spinner />;
-        </>
-      );
-    }
+
     if (status === Status.REJECTED) {
       return <h1>{error.message}</h1>;
     }
-    if (status === Status.RESOLVED) {
+
+    if (status === Status.RESOLVED || status === Status.PENDING) {
       return (
         <>
-          <Searchbar onSubmit={this.handleSearchbarSubmit} />
           <ImageGallery images={articles} openModal={this.handleClickImg} />
-          {!arePicturesOver && <Button nextImages={this.fetchArticles} />}
+          {status === Status.RESOLVED && !arePicturesOver && (
+            <Button nextImages={this.onClickLoadMore} />
+          )}
+          {status === Status.PENDING && <Spinner />}
           {showModal && (
             <Modal onClose={this.closeModal} imgUrl={largeImgUrl} />
           )}
